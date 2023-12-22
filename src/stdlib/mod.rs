@@ -18,6 +18,7 @@
     clippy::inefficient_to_string, // allowed in initial deny commit
     clippy::match_bool, // allowed in initial deny commit
     clippy::match_same_arms, // allowed in initial deny commit
+    clippy::mutable_key_type,
     clippy::needless_pass_by_value, // allowed in initial deny commit
     clippy::semicolon_if_nothing_returned,  // allowed in initial deny commit
     clippy::similar_names, // allowed in initial deny commit
