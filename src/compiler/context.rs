@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use super::TimeZone;
 
 use super::{state::RuntimeState, Target};
@@ -6,6 +8,7 @@ pub struct Context<'a> {
     target: &'a mut dyn Target,
     state: &'a mut RuntimeState,
     timezone: &'a TimeZone,
+    dynamic_state: Option<&'a dyn Any>,
 }
 
 impl<'a> Context<'a> {
@@ -19,7 +22,17 @@ impl<'a> Context<'a> {
             target,
             state,
             timezone,
+            dynamic_state: None,
         }
+    }
+
+    pub fn with_dynamic_state(mut self, state: &'a dyn Any) -> Self {
+        self.dynamic_state = Some(state);
+        self
+    }
+
+    pub fn dynamic_state(&self) -> Option<&'a dyn Any> {
+        self.dynamic_state
     }
 
     /// Get a reference to the [`Target`].
