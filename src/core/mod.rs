@@ -11,6 +11,7 @@
 #![allow(
     clippy::missing_errors_doc, // allowed in initial deny commit
     clippy::module_name_repetitions, // allowed in initial deny commit
+    clippy::mutable_key_type
 )]
 
 pub mod encode_key_value;

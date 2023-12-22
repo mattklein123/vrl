@@ -1,21 +1,28 @@
 use std::borrow::Cow;
 use std::fmt::{self, Display, Formatter};
 
-use serde::{Deserialize, Serialize};
+use bytes::Bytes;
+use serde::Deserialize;
+use serde::Serialize;
+use std::hash::Hash;
 
 /// The key type value. This is a simple zero-overhead wrapper set up to make it explicit that
 /// object keys are read-only and their underlying type is opaque and may change for efficiency.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "proptest", derive(proptest_derive::Arbitrary))]
-#[serde(transparent)]
-pub struct KeyString(String);
+pub struct KeyString(Bytes);
 
 impl KeyString {
     /// Convert the key into a boxed slice of bytes (`u8`).
     #[inline]
     #[must_use]
     pub fn into_bytes(self) -> Box<[u8]> {
-        self.0.into_bytes().into()
+        self.0.to_vec().into()
+    }
+
+    /// Convert the key to the backing bytes.
+    pub fn to_bytes(&self) -> Bytes {
+        self.0.clone()
     }
 
     /// Is this string empty?
@@ -36,62 +43,89 @@ impl KeyString {
     #[inline]
     #[must_use]
     pub fn as_str(&self) -> &str {
-        &self.0
+        // Must be a valid string.
+        unsafe { std::str::from_utf8_unchecked(&self.0) }
+    }
+}
+
+impl Hash for KeyString {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Strings hash differently from bytes so make sure the implementations below line up.
+        self.as_str().hash(state);
+    }
+}
+
+impl Serialize for KeyString {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'a> Deserialize<'a> for KeyString {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'a>,
+    {
+        let string = String::deserialize(deserializer)?;
+        Ok(string.into())
     }
 }
 
 impl Display for KeyString {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        self.0.fmt(fmt)
+        self.as_str().fmt(fmt)
     }
 }
 
 impl AsRef<str> for KeyString {
     fn as_ref(&self) -> &str {
-        &self.0
+        self.as_str()
     }
 }
 
 impl std::ops::Deref for KeyString {
     type Target = str;
     fn deref(&self) -> &str {
-        &self.0
+        self.as_str()
     }
 }
 
 impl std::borrow::Borrow<str> for KeyString {
     fn borrow(&self) -> &str {
-        &self.0
+        self.as_str()
     }
 }
 
 impl PartialEq<str> for KeyString {
     fn eq(&self, that: &str) -> bool {
-        self.0[..].eq(that)
+        self.as_str()[..].eq(that)
     }
 }
 
 impl From<&str> for KeyString {
     fn from(s: &str) -> Self {
-        Self(s.into())
+        Self(s.to_string().into())
     }
 }
 
 impl From<String> for KeyString {
     fn from(s: String) -> Self {
-        Self(s)
+        Self(s.into())
     }
 }
 
 impl From<Cow<'_, str>> for KeyString {
     fn from(s: Cow<'_, str>) -> Self {
-        Self(s.into())
+        Self(s.into_owned().into())
     }
 }
 
 impl From<KeyString> for String {
     fn from(s: KeyString) -> Self {
-        s.0
+        s.as_str().to_string()
     }
 }
 
@@ -102,7 +136,7 @@ impl quickcheck::Arbitrary for KeyString {
     }
 
     fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
-        let s = self.0.to_string();
+        let s = self.as_str().to_string();
         Box::new(s.shrink().map(Into::into))
     }
 }
@@ -122,7 +156,7 @@ mod lua {
 
     impl<'a> IntoLua<'a> for KeyString {
         fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'_>> {
-            self.0.into_lua(lua)
+            self.as_str().into_lua(lua)
         }
     }
 }

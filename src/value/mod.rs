@@ -28,6 +28,7 @@
     clippy::module_name_repetitions,
     clippy::missing_const_for_fn,
     clippy::multiple_crate_versions,
+    clippy::mutable_key_type,
     clippy::fallible_impl_from,
     unreachable_code,
     unused_variables
